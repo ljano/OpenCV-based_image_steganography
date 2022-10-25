@@ -37,7 +37,11 @@
    [^疑点一]: 采用numpy库方法读取时，不导入numpy库也能读取，可能是python3.9更新了？
    [^疑点二]: `img = cv2.imread(path, cv2.IMREAD_UNCHANGED)`读取图像时若不加后面那个参数会导致`img.item（1，1，2）`与`img.item（1）`输出不一样.但好像仅限于参数为1时？
 
-   <img src="D:\need\all_picture\用于隐藏水印的黑白图片.jpg" style="zoom: 25%;" />
+   <img src="need\all_picture\用于隐藏水印的黑白图片.jpg" style="zoom: 25%;" />
+
+   [^疑点三]: 为何灰度图有三个通道？题目给的图有问题吗
+
+   
 
 2. 报错卸载重装opencv-python
 
@@ -101,7 +105,7 @@ img.shape[1]
 # 注：img.shape输出一个元组，包含三个值，依次为行数、列数、通道数（BGR图像一般都有有3个通道。灰度图像只有1个通道，理论上不会输出通道数，但实际输出还是会显示通道数为3，只不过灰度图像每个像素点的BGR值相等，自己跑个看看就知道了）
 ```
 
-实验用图像素为600*800，故最大存储二进制数为 600 * 800 * 3 = 1440000，字符数=1440000/8=180000，理论上存储题目要求的py文件绰绰有余（总计3329字符再加上空格&换行也不会超过5000），**但题目的一个衡量指标是迭代次数**，即一张图片大概率是不足以存取所有数据的，猜测原因应该是我使用的这种算法可能无法满足题目的其他要求（代码写完就知道了）
+实验用图像素为600*800，故最大存储二进制数为 600 * 800 * 3 = 1440000，字符数=1440000/8=180000，理论上存储题目要求的py文件绰绰有余（总计3329字符再加上空格&换行也不会超过5000），**但题目的一个衡量指标是迭代次数**，即一张图片大概率是不足以存取所有数据的，猜测原因应该是我使用的这种算法可能无法满足题目的其他要求
 
 > 【1016更新】确实有要求无法满足，在不考虑健壮性的前提下，图片大小于我们限制太多，这使得若达到指定大小就会使得安全性大大降低。若考虑健壮性，倒是需要五张图片。该算法的限制太多，正常应该用滤波来做或许会好一点。
 
@@ -160,188 +164,6 @@ def get_rec(img_raw: np.ndarray, data: list, path_save)
 
 #### **五、一些问题（解决&未解决）**
 
-##### 1.杂七杂八
-
-1. <img src="D:\need\all_picture\问题1.png" alt="image-20220923205611770" style="zoom:50%;" />
-
-   获取的像素值数要比存的二进制数多的原因：因为每三个像素点包含9个像素值，第9位是用来判断后面是否还有数据要存储的，并不存储要隐藏数据中的二进制值。可以验算一下：
-
-   **40632 - 39144 = 1488个标识位，1488 * 8 = 11904个比特？？？？？坏了，差这么多？？还是我的计算方法有问题？**
-
-   <原因已明确> 是因为代码本身就有问题。如果正常，理论上应有：
-
-   ```python
-   #（像素值个数-比特串长度）* 8 = 比特串长度
-   # 也有可能不等，但差值一定在9以内。这个是我猜的，还没想太明白【就是如果3个3个像素点这样读，最后3个像素点不一定存的满，择日再想】
-   ```
-
-   ```python
-   # 像素值个数获取方法为：
-   len(pixel)
-   # 比特串长度获取方法：
-   len(text) * 8
-   ```
-
-2. 在新设备上我没有装opencv-python库和opencv-contrib-python库，神奇的是程序依然可以正常运行，甚至可以显示cv2库里的方法，不再像之前一样警告且无任何提示。但出现了一个新的问题，鼠标悬停无法显示函数具体解释（如下图），稍微查了下，Epydoc好像还没移植到python3里，因此应该没有什么好的解决办法。不过也不影响使用。
-
-   <img src="D:\need\all_picture\问题2.png" alt="image-20220930162657803" style="zoom:50%;" />
-
-   > 1.https://stackoverflow.com/questions/61976114/is-it-possible-to-change-the-way-pycharm-displays-the-opencv-documentation
-   >
-   > 2.https://blog.csdn.net/qq_42818011/article/details/124043311
-
-3. 今天忽然发觉没必要把编码拆开写（我是拆成了一个修改像素值的函数encode和一个将像素值写入图片的函数encode_write），可以直接在修改像素值时顺便将其写入图片，但是按照我写的这个修改像素值的方法改起来似乎有点麻烦，懒得改了。后续有空可以优化一下。
-
-4. 不太行，像素值虽然±1波动但为什么变化这么明显？？
-
-   ![](D:\need\all_picture\修改后的图片1.png)
-
-​		根据下文的分析，是因为像素值并非±1波动，所以明显，合理。
-
-可以看到上方有很明显的横杠。。。。。而且程序显示图片后一直运行，停不下来。。。下午再		来看看。可以查查怎么debug。
-
-​		哦对，还有个问题。我改了j后像素值和字符串值一致了。我怀疑是encode函数有问题？
-
-```python
-for j in range(0, int(col_rest / 3))  # 这里的col_rest应该要除以3
-```
-
-
-
-***重大发现，显示图片放大到一定程度后可看到每个像素点的BGR值！！！看颜色即可知对应像素值***
-
-**① 先来看看原图的RGB值：**
-
-<img src="D:\need\all_picture\原图RGB值.png" style="zoom: 50%;" />
-
-> 符合灰度图像性质，且jpg与png格式的RGB值相同，经过测试，修改后的图像的BGR值也不会因为图片格式的更改而发生变化。
-
-**② water_0.txt测试结果（3个字符/123）：**
-
-```python
-# 123
-['00110001', '00110010', '00110011']
-```
-
-<img src="D:\need\all_picture\water_0测试结果.png" style="zoom: 25%;" />
-
-<img src="D:\need\all_picture\water_0测试结果_RGB值.png" style="zoom:67%;" />
-
-> 1. 存储方式倒没有问题，1个字符对应8个bit，存在3个像素点里（前8位）。但里面的数值有大问题。
->
-> 2. 很显然，结果与算法矛盾，按照算法每个像素点的BGR值只会±1、±0变动，而图中许多像素值并非按此规则变动。而且若后续还有数据，每3个像素的第9位应该变为偶数，显然第1个157就不满足。
->
-> 3. 按照算法，正确的值应该如下表所示：
->
->    |       | 0         |     1     |     2      |     3     |     4     |     5      |     6     |     7     |   8    |
->    | ----- | --------- | :-------: | :--------: | :-------: | :-------: | :--------: | :-------: | :-------: | :----: |
->    | **R** | **167/1** |   162/0   | **160/走** | **159/1** |   158/0   | **156/走** |   159/1   | **162/0** | 159/停 |
->    | **G** | 168/0     | **162/0** |   159/1    |   160/0   | **158/0** | **156/0**  | **158/0** | **162/0** | 159/1  |
->    | **B** | 168/0     | **163/1** | **160/0**  |   160/0   | **159/1** | **157/1**  | **158/0** | **163/1** | 159/1  |
->
->    表中`X/Y`为`理论值/比特值`。加粗的为测试中出现错误的值。下同。
->
->    Care! opencv的读取顺序为BGR
->
->    而`encode`函数的输出如下表所示
->
->    |       | 0     | 1     | 2      | 3     | 4     | 5      | 6     | 7     | 8      |       |
->    | ----- | ----- | ----- | ------ | ----- | ----- | ------ | ----- | ----- | ------ | ----- |
->    | **R** | 168/0 | 162/0 | 157/走 | 160/0 | 159/0 | 157/走 | 159/0 | 163/0 | 159/停 |       |
->    | **G** | 168/0 | 163/1 | 159/0  | 160/0 | 159/1 | 157/1  | 159/0 | 163/1 | 159/1  |       |
->       | **B** | None  | 167/1 | 162/0  | 160/1 | 160/1 | 159/0  | 157/0 | 159/1 | 163/0  | 157/1 |
->    
->    该表与encode_write的输出完全一致：
->    
->    <img src="D:\need\all_picture\water_0测试结果_RGB值_new.png" style="zoom: 50%;" />
->    
->       可以看到（0，0，0）点保留的是原图像素，并没有读进去，说明`encode_write`有问题。
->    
->       错位（均往前移一位）后结果为：
->    
->       |       | 0     | 1     | 2         | 3         | 4         | 5          | 6         | 7         | 8          |
->    | ----- | ----- | ----- | --------- | --------- | --------- | ---------- | --------- | --------- | ---------- |
->       | **R** | 167/1 | 162/0 | 160/走    | **160/1** | **159/0** | **157/走** | 159/1     | **163/0** | **157/停** |
->    | **G** | 168/0 | 162/0 | **157/1** | 160/0     | **159/0** | **157/0**  | **159/0** | **163/0** | 159/1      |
->       | **B** | 168/0 | 163/1 | **159/0** | 160/0     | 159/1     | 157/1      | **159/0** | 163/1     | 159/1      |
->    
->    这说明`encode_write`也有问题。
-
-**③ water_1.txt测试结果（4个字符/1234）：**
-
-<img src="D:\need\all_picture\water_1测试结果.png" style="zoom:45%;" />
-
-<img src="D:\need\all_picture\water_1测试结果_RGB值.png" style="zoom:67%;" />
-
-> 不算特别明显，但有变化，仔细看也能看出来。
->
-> 可以发现像素点2的BGR值差距较大，反映在图像中（也就是第3个方块）就是很明显的淡蓝色。
->
-> 而比较有代表性的像素点4的BGR值仅存在1的差值，反映在图中完全看不出来，符合图像变化的性质。
-
-**④ water_2.txt测试结果（18个字符/123456789123456789）：**
-
-<img src="D:\need\all_picture\water_2测试结果.png" style="zoom:35%;" />
-
-![](D:\need\all_picture\water_2测试结果_RGB值_1.png)
-
-![](D:\need\all_picture\water_2测试结果_RGB值_2.png)
-
-> 开始明显了。
->
-> 而且除了数值错误还出现了一个新的问题：同样是编码数据1234，像素点1的R值由162变为159，其他像素点倒没有什么问题，很奇怪。在⑤⑥测试中该问题更加严重，但**依然集中在像素点1和2上，合理推测该问题只存在于这俩像素点，至于为什么，我不理解。**
-
-**⑤ water_3.txt测试结果（90个字符）：**
-
-<img src="D:\need\all_picture\water_3测试结果.png" style="zoom:35%;" />
-
-<img src="D:\need\all_picture\water_3测试结果_RGB值.png" style="zoom:50%;" />
-
-> 很明显的变化。
-
-**⑥ water_4.txt测试结果（909个字符，含9个换行符）：**
-
-<img src="D:\need\all_picture\water_4测试结果.png" style="zoom:35%;" />
-
-<img src="D:\need\all_picture\water_4测试结果_RGB值.png" style="zoom: 50%;" />
-
-再来看一下原图的BGR值：
-
-<img src="D:\need\all_picture\原图RGB值_2.png" style="zoom: 50%;" />
-
-> 1. 存满了前3行，以及第4行的前24个像素点，可以看到非常明显的变化，个别点尤为严重，因为变化和差值巨大，典型的即1、2两个像素点以及第2、3行全体像素点。
->
-> 2. 第3行的BGR值说明了两个问题：①`encode`有问题②`encode_write`有问题。
-> 3. 第4行的BGR值说明都没动，亦能说明上述问题。
-
-
-
-##### 2.关于输出图片大小问题的分析
-
-- 首先是仅仅存入18个数字，图片大小由**75.4 ->345kb**，变化过大
-
-  <img src="D:\need\all_picture\test_water_2_result.png" style="zoom: 25%;" />
-
-- 然后存入题目要求的文本（180000个字符），图片大小变为**354kb**
-
-  <img src="D:\need\all_picture\test_water_long_result.png" style="zoom:25%;" />
-
-- 将上图缩小一点得到的图片大小变小，这是合理的。但是**分辨率没变，依然是800*600**，取景框大小没变的原因？（其实可以把这俩像素读出来看看...）
-
-  <img src="D:\need\all_picture\test_water_long_result_s.png" style="zoom:25%;" />
-
-- 根据上面数据来看一个极端例子，我直接输出原图。果然，**图片大小依然为345kb!**
-
-  <img src="D:\need\all_picture\test_water_r_result.png" style="zoom:25%;" />
-
-> **【结论】：**猜测是库自身使用的输出图像的编码问题，**当数据量不多时，图片大小必为345kb**；只有当数据量足够多时输出图片大小才会有少量增长，如上面的**十八万个字符，才仅仅增长了9kb**。后续可以研究下是否可以自定义输出图片或者其他输出方式，不采用opencv自带的输出方式。
-
-- 【1004更新】opencv自身输出的图片格式为png，要修改为jpg需要**以画图方式打开**，然后另存为jpg。这样得到的jpg才是有损压缩后的，大小由**354->91.9kb**。直接修改后缀的方式是不可取的，大小不会发生变化。
-
-  
-
-##### 3.综上所述，问题一定出在编码上，分析如下
-
 1. **get_pix**理论上没问题，只是正常将原图像素读取到列表。实际测试也没问题。不过他有个和算法不符的问题，即我需要的返回值为原图中所有我要存的像素值，这不仅包含我要存数据的像素值，也包含第9位的一个作前进flag的像素值。而实际代码只计算了前者，没有将flag算进去，所以这也可能是出问题的原因所在。**故第一步的任务是先把get_pix完善，让123先测试通过。**两个改进思路：①把flag也都进去就行②加点判断/标记？
 
    > 很对很对，改了getpix后encode输出和写入后的对上了！！！但有错位！第一个像素值没读进去，看看其他文本有没有这个问题以及是否能对上。123好像没对上来着？错位？下午看看water4是不是全队上了且错1位，同时看看flag位对不对！yeah，优化后好多了。依然存在错位+编码问题
@@ -358,7 +180,7 @@ for j in range(0, int(col_rest / 3))  # 这里的col_rest应该要除以3
 >
 > **【10.04更新_encode_write】**错位的原因在于第一轮循环没有进入itemset，后续都是正常进入。没进入的原因是最内层for的range的参数为(0, 0)。
 >
-> <img src="D:\need\all_picture\water_4修复结果_RGB值_1.png" style="zoom:50%;" />
+> <img src="need\all_picture\water_4修复结果_RGB值_1.png" style="zoom:50%;" />
 >
 > 错位应该是修复了，明天再测试一下。
 >
@@ -370,41 +192,42 @@ for j in range(0, int(col_rest / 3))  # 这里的col_rest应该要除以3
 >
 > *water_4.txt测试结果：*（**png, 348kb**）
 >
-> <img src="D:\need\all_picture\test_water_4_result_right.png" style="zoom: 33%;" />
+> <img src="need\all_picture\test_water_4_result_right.png" style="zoom: 33%;" />
 >
-> <img src="D:\need\all_picture\water_4完全修复结果_RGB值_2.png" style="zoom: 50%;" />
+> <img src="need\all_picture\water_4完全修复结果_RGB值_2.png" style="zoom: 50%;" />
 >
 > *water_long.txt测试结果：*(**png, 354kb**)
 >
-> <img src="D:\need\all_picture\test_water_long_result_right.png" style="zoom:33%;" />
+> <img src="need\all_picture\test_water_long_result_right.png" style="zoom:33%;" />
 >
 > *再对比下原图：*(**jpg, 75.4kb**)
 >
-> <img src="D:\need\all_picture\test.jpg" style="zoom:33%;" />
+> <img src="need\all_picture\test.jpg" style="zoom:33%;" />
 >
 > **可以看到，肉眼完全看不出差别，符合我们的算法逻辑，perfect。**
 >
 > 再附一下water_4和water_long的**jpg**格式：**（均为92.0kb）**
 >
 > <div>			<!--块级封装-->
->     <center>	<!--将图片和文字居中-->
->     <img src="D:\need\all_picture\test_water_4_result_right.jpg"
->          alt="无法显示图片时显示的文字"
->          style="zoom:33%"/>
->     <br>		<!--换行-->
->     water_4测试结果_jpb	<!--标题-->
->     </center>
+>  <center>	<!--将图片和文字居中-->
+>  <img src="need\all_picture\test_water_4_result_right.jpg"
+>       alt="无法显示图片时显示的文字"
+>       style="zoom:33%"/>
+>  <br>		<!--换行-->
+>  water_4测试结果_jpb	<!--标题-->
+>  </center>
 > </div>
 >
 > <div>			<!--块级封装-->
->     <center>	<!--将图片和文字居中-->
->     <img src="D:\need\all_picture\test_water_long_result_right.jpg"
->          alt="无法显示图片时显示的文字"
->          style="zoom:33%"/>
->     <br>		<!--换行-->
->     water_long测试结果_jpg	<!--标题-->
->     </center>
+>  <center>	<!--将图片和文字居中-->
+>  <img src="need\all_picture\test_water_long_result_right.jpg"
+>       alt="无法显示图片时显示的文字"
+>       style="zoom:33%"/>
+>  <br>		<!--换行-->
+>  water_long测试结果_jpg	<!--标题-->
+>  </center>
 > </div>
+>
 >
 > **【10.05更新】**关于程序停不下来的问题，是因为显示图片的两句代码：
 >
@@ -426,19 +249,19 @@ for j in range(0, int(col_rest / 3))  # 这里的col_rest应该要除以3
 >
 > water_long：
 >
-> <img src="D:\need\all_picture\water_long_rec_error_1.png" style="zoom: 50%;" />
+> <img src="need\all_picture\water_long_rec_error_1.png" style="zoom: 50%;" />
 >
 > 测试一下water_4：
 >
-> <img src="D:\need\all_picture\water_4_rec_error_1.png" style="zoom: 50%;" />
+> <img src="need\all_picture\water_4_rec_error_1.png" style="zoom: 50%;" />
 >
 > 来测试个极端的water_0：
 >
-> <img src="D:\need\all_picture\water_0_rec_error_1.png" style="zoom:50%;" />
+> <img src="need\all_picture\water_0_rec_error_1.png" style="zoom:50%;" />
 >
 > 还有个问题，jpg出大问题，无论嵌入多少都只能恢复一个字符。。。：
 >
-> <img src="D:\need\all_picture\rec_jpg.png" style="zoom: 50%;" />
+> <img src="need\all_picture\rec_jpg.png" style="zoom: 50%;" />
 >
 > **分析：**都不能恢复，但前俩恢复的列表长度还挺接近，这肯定有问题。123都不能恢复，有大问题啊。如果jpg不是这个原因，那图片大小还真不好弄，只能压缩了。明天再来研究，争取解决。先把jpg的像素值读出来看看对不对。
 >
@@ -452,15 +275,15 @@ for j in range(0, int(col_rest / 3))  # 这里的col_rest应该要除以3
 >
 > **【10.06更新_decode】**这就是为什么只能读出267个字符的原因，`decode_pre`只读出了这么多个字符。然后我用`get_pix`又读了下嵌入数据后的Png，像素值是有问题，他丫的i忘改了，存第row+1行i取的row+1，应该取row，昨天只改了`encode_write`，`get_pix`没改，现在`get_pix`没问题了，但是。。。。所以问题必然出在`decode_pre`函数
 >
-> <img src="D:\need\all_picture\water_4_rec_error_2.png" style="zoom:50%;" />
+> <img src="need\all_picture\water_4_rec_error_2.png" style="zoom:50%;" />
 >
 > 3*90-6=264个正确的字符，也就是说前264\*3=792个像素点都没问题，第793个像素点出了问题
 >
-> <img src="D:\need\all_picture\water_4_rec_error_3.png" style="zoom:50%;" />
+> <img src="need\all_picture\water_4_rec_error_3.png" style="zoom:50%;" />
 >
 > 看着没有任何问题。。。
 >
-> <img src="D:\need\all_picture\water_4_rec_error_4.png" style="zoom:50%;" />
+> <img src="need\all_picture\water_4_rec_error_4.png" style="zoom:50%;" />
 >
 > 终于找到原因了，屮！因为在判断flag的j值时只考虑到了第一行也就是i=0的情况，详见上图。而第二行错位了，因为一行只有800个像素点，第一行的第798个像素点（j=797）的r值是最后一个flag，还剩下俩像素点，所以第二行的flag的j值与第一行的判断方法不同，且整体向左错2位，第二行第一个flag为 j=0，加的规律与第一行相同。故在（1，2，2）像素值处跳出循环返回了。
 >
@@ -491,27 +314,11 @@ for j in range(0, int(col_rest / 3))  # 这里的col_rest应该要除以3
 
 
 
-#### **六、下一步工作**
-
-题目要求如下：
-
-<img src="D:\need\all_picture\题目要求.png"  />
-
-1. 首要任务：完成上图①，先搞清楚该要求再。。。
-
-2. 其次：尽可能完成②，越多越好
-
-3. 至于③暂不做考虑。
 
 
 
-![](D:\need\all_picture\要求答复1.png)
 
-![](D:\need\all_picture\要求答复2.png)
-
-
-
-#### **七、图像压缩（png）**
+#### **六、图像压缩（png）**
 
 基于jpg等有损压缩该算法无法恢复，我们只考虑png的压缩。
 
@@ -546,11 +353,11 @@ for j in range(0, int(col_rest / 3))  # 这里的col_rest应该要除以3
 
    偶然发现，如果我换一个物理内存更小的jpg作为输入，是否可以得到更小的png输出呢？试了一下还真他丫的可以，而且也能恢复。不过问题是大概在128kb就可以看到较为明显的差异，75kb就更不用谈了
 
-   <img src="D:\need\all_picture\rec_2.png"  />
+   <img src="need\all_picture\rec_2.png"  />
 
    > 从该图可以大致看到jpg的有损压缩原理。相近的色块直接统一，压缩比例越大统一程度越高。
 
-​		反复尝试获得如下相对凑合的图：<img src="D:\need\all_picture\rec_5.png" style="zoom: 50%;" />
+​		反复尝试获得如下相对凑合的图：<img src="need\all_picture\rec_5.png" style="zoom: 50%;" />
 
 
 
@@ -593,7 +400,7 @@ i=90, mb=13, q=18, s=5
 
 4. 基于上述想法，尝试更换更小的png作为输入，但使用tinify得到最小的png预计可在40k左右，但出来的png达到两百多k。故得出结论：png不能作为输入，否则只会得到更大的png。只有足够小的jpg才能得到更小的png输出。
 
-   <img src="D:\need\all_picture\rec_tini_1.png" style="zoom:50%;" />
+   <img src="need\all_picture\rec_tini_1.png" style="zoom:50%;" />
 
 5. 。。。【1009任务】。写个代码能稳定跑出上面71kb那种图。结果应在**75.4-79.17kb**之间。其实再小一点更好但是不太现实。
 
@@ -616,7 +423,7 @@ i=90, mb=13, q=18, s=5
 
    
 
-#### **八、阈值加密**
+#### **七、阈值加密**
 
 采用的是一个(3，5)门限的阈值加密。（仅在恢复的第一阶段满足）
 
@@ -627,13 +434,6 @@ i=90, mb=13, q=18, s=5
 **思路：**所有j相等的share_i_j.txt文件合并成一个txt文件，并写入一张图片，总计需要5张图片，任选3张图片可以恢复出原文件。
 
 
-
-
-
-**一些问题：**
-
-1. recover里的参数sub为什么是7？下标从1开始，分6份。
-2. 恢复的数据存在一行space。已解决，share_all_1.txt文件末尾有空行<img src="C:\Users\Yeryo\AppData\Roaming\Typora\typora-user-images\image-20221015215110431.png" alt="image-20221015215110431" style="zoom: 67%;" />
 
 
 
@@ -894,26 +694,9 @@ i=75, mb=25, q=75, s=1
 
 
 
-#### **九、下一步工作2**
-
-①写一个输入图片恢复数据并验证的函数（感觉不需要，因为压缩后自带验证，要写的话也简单，直接调之前的就行），算了，懒得写了。你们有空写写吧，基本上参照decode里的函数来写就行，改改输入参数啥的。
-
-②五图和单图的参数s可以改为1再测一测，或许能得到略好一点的结果。懒得测了
-
-③decode的几个rec函数可以合并一下，compress_all的几个主函数也可以合并一下。懒得合并了，对于这个项目而言也不算啥太有意义的工作，只是让代码更规整，可移植性更高罢了
-
-③剩下一些**健壮性的检测**了：
-
-> **关于判断图像是否可恢复的大致方法为：**直接读取经过某些操作后的图片然后debug或者print就可以看到像素值，若修改格式后像素值没变就说明可以，否则不行。
-
-- **【格式修改】**可以考虑一些无损压缩以及opencv可读取的图片格式。有最好，没有就算了。常见图片格式：https://zhuanlan.zhihu.com/p/149429406
-- **【旋转】**老师的回复是旋转仍保留图像的每个部分，但是这又分两种，如果只是纯旋转那就可以恢复，如果是嵌入一张白纸里那就不行。这两点都可以写到报告里
-- **【缩放】**这个简单，直接调opencv自带的缩放函数就行。理论上来讲这个是可以恢复的，不过我也不太清楚缩放原理，缩放修改的是不是图片的像素？如果是可能恢复就不太现实了。。
-- **【其他方面】**建议去看看对图像的一些操作，可直接看opencv的库函数，有没有可以用的，即对图像进行某些操作后仍可恢复（体现健壮性），比如仿射变换里的平移、翻转等。尽量找点，否则咱做的这垃圾玩意要啥啥都不满足。可参考网站：opecv基础操作及例程：https://blog.csdn.net/youcans/article/details/125112487、python的仿射变换：https://www.jianshu.com/p/0231949598df
 
 
-
-#### **十、项目总结**
+#### **八、项目总结**
 
 ##### 0.代码量
 
